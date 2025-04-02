@@ -1,0 +1,14 @@
+#include "/Engine/Public/Platform.ush"
+
+
+RWBuffer<float3> positions;
+Buffer<float3> velocitys;
+
+float deltaTime;
+float3 pointer;
+
+[numthreads(4, 4, 4)]
+void BoidComputeShader (uint3 id : SV_DispatchThreadID)
+{
+
+}
