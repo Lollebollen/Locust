@@ -115,7 +115,6 @@ void FExampleComputeShaderInterface::DispatchRenderThread(FRHICommandListImmedia
 
 		TShaderMapRef<FExampleComputeShader> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel), PermutationVector);
 		
-
 		bool bIsShaderValid = ComputeShader.IsValid();
 
 		if (bIsShaderValid) {

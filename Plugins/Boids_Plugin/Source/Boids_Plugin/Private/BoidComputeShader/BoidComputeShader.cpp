@@ -68,19 +68,27 @@ void FBoidComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate&
 
 		typename FBoidComputeShader::FPermutationDomain PermutationVector;
 
-		TShaderMapRef<FBoidComputeShader> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel),
-			PermutationVector);
+		TShaderMapRef<FBoidComputeShader> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel), PermutationVector);
+
+
 		if (ComputeShader.IsValid())
 		{
+			UE_LOG(LogTemp, Log, TEXT("ComputeShader is valid"));
 			FBoidComputeShader::FParameters* PassParameters = GraphBuilder.AllocParameters<FBoidComputeShader::FParameters>();
+			UE_LOG(LogTemp, Log, TEXT("PassParameters Defined"));
 
 			FRDGBufferRef OutputBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(
 				sizeof(float) * 3, 64), TEXT("positions")); // TODO Dynamic Buffersize
+			UE_LOG(LogTemp, Log, TEXT("OutPut Buffer Defined"));
 
 			PassParameters->positions = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(OutputBuffer, PF_R32_SINT));
 
+			UE_LOG(LogTemp, Log, TEXT("PassParameters positions Defined"));
+
 			FInt32Vector3 GroupCount = FComputeShaderUtils::GetGroupCount(FInt32Vector3(
 				Params.X, Params.Y, Params.Z), FInt32Vector3(4, 4, 4));
+			UE_LOG(LogTemp, Log, TEXT("Group Count Defined"));
+
 			GraphBuilder.AddPass(RDG_EVENT_NAME("ExecuteBoidComputeShader"), //TODO PROBLEM AREA
 				PassParameters,
 				ERDGPassFlags::AsyncCompute,
@@ -88,15 +96,24 @@ void FBoidComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate&
 				{
 					FComputeShaderUtils::Dispatch(RHICmdList, ComputeShader, *PassParameters, GroupCount);
 				});
+			UE_LOG(LogTemp, Log, TEXT("Pass Added"));
 
-			FRHIGPUBufferReadback* GPUBufferReadback = new FRHIGPUBufferReadback(TEXT("ExecuteBoidComputeShaderpositions")); // TODO PROBLEM AREA
+			FRHIGPUBufferReadback* GPUBufferReadback = new FRHIGPUBufferReadback(TEXT("ExecuteBoidComputeShaderPositions")); // TODO PROBLEM AREA
+			UE_LOG(LogTemp, Log, TEXT("Readback buffer init"));
+
 			AddEnqueueCopyPass(GraphBuilder, GPUBufferReadback, OutputBuffer, 0u);
+			UE_LOG(LogTemp, Log, TEXT("Enqueue Added, past max"));
+			GraphBuilder.Execute();
 
 			auto RunnerFunc = [GPUBufferReadback, AsyncCallback](auto&& RunnerFunc) -> void
 				{
+					UE_LOG(LogTemp, Log, TEXT("Pre Readback"));
 					if (GPUBufferReadback->IsReady())
 					{
-						FVector3f* OutValue = (FVector3f*)GPUBufferReadback->Lock(1); // TODO PROBLEM AREA
+						UE_LOG(LogTemp, Log, TEXT("Readback ready"));
+
+						TArray<FVector3f>* Buffer = (TArray<FVector3f>*)GPUBufferReadback->Lock(sizeof(float) * 3 * 64); // TODO PROBLEM AREA
+						TArray<FVector3f> OutValue = *Buffer;
 						GPUBufferReadback->Unlock();
 
 						AsyncTask(ENamedThreads::GameThread, [AsyncCallback, OutValue]()
@@ -106,12 +123,21 @@ void FBoidComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate&
 					}
 					else
 					{
+						UE_LOG(LogTemp, Log, TEXT("Readback not ready"));
+
 						AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]()
 							{
 								RunnerFunc(RunnerFunc);
 							});
 					}
+
 				};
+			UE_LOG(LogTemp, Log, TEXT("End of if check"));
+
+			AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]()
+				{
+					RunnerFunc(RunnerFunc);
+				});
 		}
 		else
 		{
@@ -120,4 +146,5 @@ void FBoidComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate&
 #endif
 		}
 	}
+
 }

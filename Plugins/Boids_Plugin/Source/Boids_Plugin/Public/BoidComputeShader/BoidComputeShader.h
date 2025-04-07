@@ -26,9 +26,9 @@ struct BOIDS_PLUGIN_API FBoidComputeShaderDispatchParams
 class BOIDS_PLUGIN_API FBoidComputeShaderInterface
 {
 public:
-	static void DispatchRenderThread(FRHICommandListImmediate& RHEICmdlist,
+	static void DispatchRenderThread(FRHICommandListImmediate& RHICmdlist,
 		FBoidComputeShaderDispatchParams Params,
-		TFunction<void(TArray<FVector3f> OutputVal)> AsyncCallback); 
+		TFunction<void(TArray<FVector3f> OutputVal)> AsyncCallback);
 
 	static void DispatchGameThread(FBoidComputeShaderDispatchParams Params,
 		TFunction<void(TArray<FVector3f> OutputVal)> AsyncCallback)
@@ -68,9 +68,12 @@ public:
 		Params.DeltaTime = Arg1;
 		Params.Pointer = Arg2;
 
+		UE_LOG(LogTemp, Log, TEXT("PreDispatch"));
 		FBoidComputeShaderInterface::Dispatch(Params, [this](TArray<FVector3f> OutputVal) {
+			UE_LOG(LogTemp, Log, TEXT("Dispatch Complete"));
 			this->Completed.Broadcast(OutputVal);
 			});
+		UE_LOG(LogTemp, Log, TEXT("PostDispatch"));
 	}
 
 	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", BlueprintPure = "false",
@@ -81,10 +84,7 @@ public:
 		UBoidComputeShaderLibrary_AsyncExecution* Action = NewObject<UBoidComputeShaderLibrary_AsyncExecution>();
 		Action->Arg1 = Arg1;
 		Action->Arg2 = Arg2;
-		if (WorldContextObject)
-		{
-			Action->RegisterWithGameInstance(WorldContextObject);
-		}
+		Action->RegisterWithGameInstance(WorldContextObject);
 
 		return Action;
 	}
@@ -93,5 +93,5 @@ public:
 	FOnBoidComputeShaderLibrary_AsyncExecutionCompleted Completed;
 
 	float Arg1 = 0;
-	FVector3f Arg2 = FVector3f(0,0,0);
+	FVector3f Arg2 = FVector3f(0, 0, 0);
 };
