@@ -24,10 +24,9 @@ public:
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 
-		SHADER_PARAMETER(float, deltaTime)
-		SHADER_PARAMETER(FVector3f, pointer)
-
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<FVector2f>, positions)
+		SHADER_PARAMETER(FVector3f, pointer)
+		SHADER_PARAMETER(float, deltaTime)
 
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -103,7 +102,6 @@ void FBoidComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate&
 
 			AddEnqueueCopyPass(GraphBuilder, GPUBufferReadback, OutputBuffer, 0u);
 			UE_LOG(LogTemp, Log, TEXT("Enqueue Added, past max"));
-			GraphBuilder.Execute();
 
 			auto RunnerFunc = [GPUBufferReadback, AsyncCallback](auto&& RunnerFunc) -> void
 				{
@@ -112,8 +110,12 @@ void FBoidComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate&
 					{
 						UE_LOG(LogTemp, Log, TEXT("Readback ready"));
 
-						TArray<FVector3f>* Buffer = (TArray<FVector3f>*)GPUBufferReadback->Lock(sizeof(float) * 3 * 64); // TODO PROBLEM AREA
-						TArray<FVector3f> OutValue = *Buffer;
+						void* RawData = GPUBufferReadback->Lock(sizeof(FVector3f) * 64);
+						FVector3f* TypedData = reinterpret_cast<FVector3f*>(RawData);
+
+						TArray<FVector3f> OutValue;
+						OutValue.Append(TypedData, 64);
+
 						GPUBufferReadback->Unlock();
 
 						AsyncTask(ENamedThreads::GameThread, [AsyncCallback, OutValue]()
@@ -124,10 +126,16 @@ void FBoidComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate&
 					else
 					{
 						UE_LOG(LogTemp, Log, TEXT("Readback not ready"));
-
-						AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]()
+						ENQUEUE_RENDER_COMMAND(BoidReadbackWait)(
+							[RunnerFunc](FRHICommandListImmediate& RHICmdList)
 							{
-								RunnerFunc(RunnerFunc);
+								RHICmdList.EnqueueLambda([RunnerFunc](FRHICommandListImmediate& InnerCmdList)
+									{
+										AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]()
+											{
+												RunnerFunc(RunnerFunc);
+											});
+									});
 							});
 					}
 
@@ -147,4 +155,5 @@ void FBoidComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate&
 		}
 	}
 
+	GraphBuilder.Execute();
 }
