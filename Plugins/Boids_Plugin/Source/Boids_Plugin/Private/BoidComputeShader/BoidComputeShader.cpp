@@ -24,7 +24,7 @@ public:
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 
-		SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<FVector2f>, positions)
+		SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<FVector3f>, positions)
 		SHADER_PARAMETER(FVector3f, pointer)
 		SHADER_PARAMETER(float, deltaTime)
 
@@ -80,7 +80,7 @@ void FBoidComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate&
 				sizeof(float) * 3, 64), TEXT("positions")); // TODO Dynamic Buffersize
 			UE_LOG(LogTemp, Log, TEXT("OutPut Buffer Defined"));
 
-			PassParameters->positions = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(OutputBuffer, PF_R32_SINT));
+			PassParameters->positions = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(OutputBuffer, PF_A32B32G32R32F));
 
 			UE_LOG(LogTemp, Log, TEXT("PassParameters positions Defined"));
 

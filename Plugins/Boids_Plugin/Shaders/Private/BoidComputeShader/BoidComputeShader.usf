@@ -6,84 +6,19 @@ RWBuffer<float3> velocitys;
 float deltaTime;
 float3 pointer;
 
-struct Boids
-{
-    uint3 ids[64];
-    uint count;
-};
 
 uint IDToIndex(uint3 id)
 {
     return id.x + id.y * 4 + id.z * 4 * 4;
 }
 
-// TODO remove self from collection
-Boids InsideRange()
-{
-    uint y = 0;
-    uint3 ids[64];
-    float3 boid;
-    for (uint h = 0; h < 64; h++)
-    {
-        boid = positions[h];
-        if (boid.x * boid.x + boid.y * boid.y + boid.z * boid.z > 500 * 500)
-        {
-            continue;
-        }
-        ids[y++] = boid;
-    }
-
-    Boids boidsWithinRange;
-    boidsWithinRange.ids = ids;
-    boidsWithinRange.count = y;
-    return boidsWithinRange;
-}
-
-float3 Coherance(Boids boids, uint3 id)
-{
-    float3 final = { 0, 0, 0 };
-    for (int i = 0; i < boids.count; i++)
-    {
-        final += positions[IDToIndex(boids.ids[i])] - positions[IDToIndex(id)];
-    }
-    final /= boids.count;
-    return final * 100.0f;
-}
-
-float3 Seperation(Boids boids, uint3 id)
-{
-    float3 final = { 0, 0, 0 };
-    float3 relativ;
-    for (int i = 0; i < boids.count; i++)
-    {
-        relativ = positions[IDToIndex(id)] - positions[IDToIndex(boids.ids[i])];
-        if (relativ.x * relativ.x + relativ.y * relativ.y + relativ.z * relativ.z < 10 * 10)
-        {
-            continue;
-        }
-        final += relativ;
-    }
-    return final * 100.0f;
-}
-
-float3 Alignment(Boids boids)
-{
-    float3 final = { 0, 0, 0 };
-    for (int i = 0; i < boids.count; i++)
-    {
-        final += velocitys[IDToIndex(boids.ids[i])];
-    }
-    final /= boids.count;
-    return final * 100.0f;
-}
 
 [numthreads(4, 4, 4)]
 void BoidComputeShader(uint3 id : SV_DispatchThreadID)
 {
-    Boids boids = InsideRange();
-    float3 coheranceVector = Coherance(boids, id);
-    float3 seperationVector = Seperation(boids, id);
-    float3 alignmentVector = Alignment(boids);
-    velocitys[IDToIndex(id)] += (coheranceVector + seperationVector + alignmentVector) * deltaTime;
-    positions[IDToIndex(id)] += velocitys[IDToIndex(id)] * deltaTime;
+    if (id.x >= 4 || id.y >= 4 || id.z >= 4)
+    {
+        return;
+    }
+    positions[IDToIndex(id)] = (float3)id;
 }
