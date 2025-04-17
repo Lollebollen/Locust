@@ -26,7 +26,7 @@ Boids InsideRange()
     for (uint h = 0; h < 64; h++)
     {
         boid = positions[h];
-        if (boid.x * boid.x + boid.y * boid.y + boid.z * boid.z > 100 * 100)
+        if (boid.x * boid.x + boid.y * boid.y + boid.z * boid.z > 500 * 500)
         {
             continue;
         }
@@ -47,7 +47,7 @@ float3 Coherance(Boids boids, uint3 id)
         final += positions[IDToIndex(boids.ids[i])] - positions[IDToIndex(id)];
     }
     final /= boids.count;
-    return final * 0.5f;
+    return final * 100.0f;
 }
 
 float3 Seperation(Boids boids, uint3 id)
@@ -63,7 +63,7 @@ float3 Seperation(Boids boids, uint3 id)
         }
         final += relativ;
     }
-    return final * 0.5f;
+    return final * 100.0f;
 }
 
 float3 Alignment(Boids boids)
@@ -74,7 +74,7 @@ float3 Alignment(Boids boids)
         final += velocitys[IDToIndex(boids.ids[i])];
     }
     final /= boids.count;
-    return final * 0.5f;
+    return final * 100.0f;
 }
 
 [numthreads(4, 4, 4)]
